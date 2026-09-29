@@ -1,0 +1,1 @@
+{"dependencies":{"cors":"^2.8.5","dotenv":"^16.4.5","express":"^4.19.2","openai":"^4.67.3","puppeteer":"^22.12.1"},"description":"Autonomous multi-persona UX usability testing platform powered by Groq","main":"server.js","name":"synthetic-focus","scripts":{"start":"node server.js"},"version":"1.0.0"}

@@ -1,0 +1,16 @@
+# Environment variables - NEVER commit these
+.env
+
+# Dependencies
+node_modules/
+
+# Puppeteer cache
+.cache/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+npm-debug.log*

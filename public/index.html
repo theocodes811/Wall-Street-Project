@@ -1,0 +1,618 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>SYNTHETIC_FOCUS // UX-BENCH-2000</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&family=JetBrains+Mono:ital,wght@0,400;0,600;0,700;0,800;1,400&display=swap" rel="stylesheet" />
+<style>
+/* ============================================================
+   INDUSTRIAL SKEUOMORPHISM — UX-BENCH-2000 design tokens
+   ============================================================ */
+:root {
+  --bg-chassis: #e0e5ec;
+  --bg-panel: #f0f2f5;
+  --bg-recessed: #d1d9e6;
+  --text-primary: #2d3436;
+  --text-muted: #4a5568;
+  --accent: #ff4757;
+  --accent-glow: rgba(255, 71, 87, 0.6);
+  --led-green: #2ed573;
+  --led-green-glow: rgba(46, 213, 115, 0.7);
+  --led-yellow: #ffa502;
+  --led-yellow-glow: rgba(255, 165, 2, 0.7);
+
+  --shadow-card: 8px 8px 16px #babecc, -8px -8px 16px #ffffff;
+  --shadow-floating: 12px 12px 24px #babecc, -12px -12px 24px #ffffff, inset 1px 1px 0 rgba(255,255,255,0.5);
+  --shadow-pressed: inset 6px 6px 12px #babecc, inset -6px -6px 12px #ffffff;
+  --shadow-recessed: inset 4px 4px 8px #babecc, inset -4px -4px 8px #ffffff;
+  --shadow-sharp: 4px 4px 8px rgba(0,0,0,0.15), -1px -1px 1px rgba(255,255,255,0.8);
+}
+
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  background: var(--bg-chassis);
+  background-image: radial-gradient(circle at 1px 1px, rgba(0,0,0,0.035) 1px, transparent 0);
+  background-size: 26px 26px;
+  color: var(--text-primary);
+  font-family: 'Inter', sans-serif;
+  min-height: 100vh;
+  padding: 24px;
+}
+.mono { font-family: 'JetBrains Mono', monospace; }
+.stamp {
+  font-family: 'JetBrains Mono', monospace;
+  text-transform: uppercase;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+}
+.panel {
+  background: var(--bg-panel);
+  border-radius: 18px;
+  box-shadow: var(--shadow-card);
+  position: relative;
+}
+/* corner screws, 12px offsets */
+.screws {
+  background-image:
+    radial-gradient(circle at 12px 12px, #8b93a3 0 3px, #5d6572 3px 4px, transparent 4.5px),
+    radial-gradient(circle at calc(100% - 12px) 12px, #8b93a3 0 3px, #5d6572 3px 4px, transparent 4.5px),
+    radial-gradient(circle at 12px calc(100% - 12px), #8b93a3 0 3px, #5d6572 3px 4px, transparent 4.5px),
+    radial-gradient(circle at calc(100% - 12px) calc(100% - 12px), #8b93a3 0 3px, #5d6572 3px 4px, transparent 4.5px);
+  background-repeat: no-repeat;
+}
+/* ventilation slots */
+.vents { display: flex; gap: 6px; align-items: center; }
+.vent { width: 4px; height: 20px; border-radius: 9999px; background: var(--bg-recessed); box-shadow: inset 1px 1px 2px rgba(0,0,0,0.15); }
+
+/* LEDs */
+.led { width: 10px; height: 10px; border-radius: 50%; background: #9aa3b2; flex: none; }
+.led.on-green { background: var(--led-green); box-shadow: 0 0 8px 2px var(--led-green-glow); }
+.led.on-yellow { background: var(--led-yellow); box-shadow: 0 0 8px 2px var(--led-yellow-glow); }
+.led.on-red { background: var(--accent); box-shadow: 0 0 8px 2px var(--accent-glow); }
+.pulse { animation: ledpulse 1.6s ease-in-out infinite; }
+@keyframes ledpulse { 0%,100% { opacity: 1; } 50% { opacity: 0.45; } }
+
+/* tactile buttons */
+.btn {
+  font-family: 'JetBrains Mono', monospace;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  border: none;
+  border-radius: 12px;
+  padding: 14px 22px;
+  cursor: pointer;
+  box-shadow: var(--shadow-sharp);
+  transition: transform 150ms ease, box-shadow 150ms ease;
+  text-transform: uppercase;
+  font-size: 13px;
+}
+.btn:active { transform: translateY(2px); box-shadow: var(--shadow-pressed); }
+.btn-primary { background: var(--accent); color: #fff; text-shadow: 0 1px 2px rgba(0,0,0,0.25); }
+.btn-secondary { background: var(--bg-panel); color: var(--text-muted); }
+.btn:disabled { opacity: 0.45; cursor: not-allowed; transform: none; }
+
+/* recessed input slots */
+.slot {
+  background: var(--bg-chassis);
+  box-shadow: var(--shadow-recessed);
+  border: none;
+  border-radius: 12px;
+  padding: 13px 16px;
+  width: 100%;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 13px;
+  color: var(--text-primary);
+  outline: none;
+  transition: box-shadow 150ms ease;
+}
+.slot:focus { box-shadow: var(--shadow-recessed), 0 0 0 3px rgba(255,71,87,0.35); }
+.slot::placeholder { color: #8b93a3; }
+label.field-label { display: block; font-family: 'JetBrains Mono', monospace; font-size: 11px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: var(--text-muted); margin-bottom: 8px; }
+
+/* persona toggle panels */
+.persona-toggle {
+  display: flex; align-items: center; gap: 12px;
+  background: var(--bg-panel);
+  border-radius: 14px;
+  box-shadow: var(--shadow-card);
+  padding: 14px 16px;
+  cursor: pointer;
+  border: none;
+  width: 100%;
+  text-align: left;
+  transition: box-shadow 150ms ease;
+  font-family: 'Inter', sans-serif;
+}
+.persona-toggle.active { box-shadow: var(--shadow-pressed); }
+.persona-toggle .pname { font-family: 'JetBrains Mono', monospace; font-weight: 700; font-size: 13px; letter-spacing: 0.04em; }
+.persona-toggle .ptrait { font-size: 11px; color: var(--text-muted); font-family: 'JetBrains Mono', monospace; }
+
+/* CRT monitor */
+.crt-bezel {
+  background: #1e272e;
+  border-radius: 18px;
+  padding: 22px;
+  box-shadow: var(--shadow-floating);
+  position: relative;
+}
+.crt-screen {
+  position: relative;
+  border-radius: 10px;
+  overflow: hidden;
+  background: #0c1116;
+  aspect-ratio: 16 / 10;
+}
+.crt-screen img { width: 100%; height: 100%; object-fit: contain; display: block; background: #fff; }
+.crt-screen::after {
+  content: '';
+  position: absolute; inset: 0;
+  background: linear-gradient(rgba(18,16,16,0) 50%, rgba(0,0,0,0.25) 50%);
+  background-size: 100% 4px;
+  pointer-events: none;
+  border-radius: 10px;
+}
+.crt-screen::before {
+  content: '';
+  position: absolute; inset: 0; z-index: 2;
+  background: radial-gradient(ellipse at center, transparent 55%, rgba(0,0,0,0.35) 100%);
+  pointer-events: none;
+  border-radius: 10px;
+}
+.crt-idle {
+  position: absolute; inset: 0;
+  display: flex; align-items: center; justify-content: center;
+  color: #5d6d7e; font-family: 'JetBrains Mono', monospace; font-size: 12px; letter-spacing: 0.2em;
+}
+.crt-footer {
+  position: absolute; left: 0; right: 0; bottom: 0; z-index: 3;
+  display: flex; justify-content: space-between; gap: 8px;
+  padding: 8px 12px;
+  background: rgba(10, 14, 18, 0.82);
+  color: #7bed9f;
+  font-family: 'JetBrains Mono', monospace; font-size: 11px;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+
+/* telemetry feed */
+.feed {
+  height: 560px;
+  overflow-y: auto;
+  padding: 18px;
+  border-radius: 18px;
+  background: var(--bg-chassis);
+  box-shadow: var(--shadow-recessed);
+  display: flex; flex-direction: column; gap: 14px;
+}
+.feed::-webkit-scrollbar { width: 10px; }
+.feed::-webkit-scrollbar-thumb { background: #babecc; border-radius: 8px; }
+.step-card {
+  background: var(--bg-panel);
+  border-radius: 14px;
+  box-shadow: var(--shadow-card);
+  padding: 14px 16px;
+  animation: cardin 240ms ease;
+}
+@keyframes cardin { from { transform: translateY(8px); opacity: 0; } to { transform: none; opacity: 1; } }
+.step-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; }
+.step-persona { font-family: 'JetBrains Mono', monospace; font-weight: 800; font-size: 12px; letter-spacing: 0.06em; }
+.step-num { font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--text-muted); }
+.thought {
+  font-style: italic; font-size: 13.5px; line-height: 1.55; color: var(--text-primary);
+  border-left: 3px solid var(--accent); padding-left: 12px; margin: 10px 0;
+}
+.action-badge {
+  display: inline-block; font-family: 'JetBrains Mono', monospace; font-size: 11px; font-weight: 700;
+  background: #1e272e; color: #7bed9f; border-radius: 8px; padding: 6px 10px; letter-spacing: 0.03em;
+}
+.gauge { display: flex; gap: 4px; align-items: center; }
+.gauge .seg { width: 22px; height: 8px; border-radius: 4px; background: var(--bg-recessed); box-shadow: inset 1px 1px 2px rgba(0,0,0,0.12); }
+.gauge .seg.f1 { background: var(--led-green); box-shadow: 0 0 6px var(--led-green-glow); }
+.gauge .seg.f2 { background: var(--led-yellow); box-shadow: 0 0 6px var(--led-yellow-glow); }
+.gauge .seg.f3 { background: var(--accent); box-shadow: 0 0 6px var(--accent-glow); }
+.gauge-label { font-family: 'JetBrains Mono', monospace; font-size: 10px; color: var(--text-muted); letter-spacing: 0.08em; }
+
+/* dossier modal */
+.modal-overlay {
+  position: fixed; inset: 0; z-index: 100;
+  background: rgba(45, 52, 54, 0.45);
+  display: none; align-items: center; justify-content: center; padding: 24px;
+}
+.modal-overlay.open { display: flex; }
+.clipboard {
+  background: var(--bg-panel);
+  border-radius: 20px;
+  box-shadow: var(--shadow-floating);
+  max-width: 860px; width: 100%;
+  max-height: 90vh; overflow-y: auto;
+  padding: 36px;
+  position: relative;
+}
+.sev { font-family: 'JetBrains Mono', monospace; font-size: 10px; font-weight: 800; letter-spacing: 0.1em; padding: 4px 10px; border-radius: 9999px; }
+.sev-HIGH { background: rgba(255,71,87,0.15); color: #d63031; border: 1px solid rgba(255,71,87,0.5); }
+.sev-MEDIUM { background: rgba(255,165,2,0.15); color: #b06a00; border: 1px solid rgba(255,165,2,0.5); }
+.sev-LOW { background: rgba(46,213,115,0.15); color: #1e9e52; border: 1px solid rgba(46,213,115,0.5); }
+.bottleneck { border-radius: 14px; box-shadow: var(--shadow-card); background: var(--bg-panel); padding: 16px 18px; margin-bottom: 12px; border-left: 6px solid #babecc; }
+.bottleneck.HIGH { border-left-color: var(--accent); }
+.bottleneck.MEDIUM { border-left-color: var(--led-yellow); }
+.bottleneck.LOW { border-left-color: var(--led-green); }
+
+.layout { max-width: 1440px; margin: 0 auto; display: flex; flex-direction: column; gap: 24px; }
+.grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; }
+.grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
+@media (max-width: 1024px) { .grid-2, .grid-3 { grid-template-columns: 1fr; } .feed { height: 420px; } }
+
+@media print {
+  body * { visibility: hidden; }
+  #dossier, #dossier * { visibility: visible; }
+  #dossier { position: absolute; left: 0; top: 0; width: 100%; max-height: none; }
+  .no-print { display: none !important; }
+}
+</style>
+</head>
+<body>
+<div class="layout">
+
+  <!-- ================= CHASSIS HEADER ================= -->
+  <header class="panel screws" style="padding: 22px 30px; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 16px;">
+    <div>
+      <div class="stamp" style="font-size: 22px;">Synthetic_Focus <span style="color: var(--text-muted);">//</span> UX-Bench-2000</div>
+      <div class="stamp" style="font-size: 10px; color: var(--text-muted); margin-top: 6px;">Autonomous multi-persona usability test rig</div>
+    </div>
+    <div style="display: flex; align-items: center; gap: 18px;">
+      <div class="vents"><div class="vent"></div><div class="vent"></div><div class="vent"></div></div>
+      <div class="panel" style="display: flex; align-items: center; gap: 10px; padding: 10px 16px; box-shadow: var(--shadow-recessed); border-radius: 12px;">
+        <span id="sys-led" class="led on-green pulse"></span>
+        <span class="stamp" id="sys-label" style="font-size: 11px;">System status: Operational [GROQ_ENGINE_READY]</span>
+      </div>
+    </div>
+  </header>
+
+  <!-- ================= CONTROL DECK ================= -->
+  <section class="panel screws" style="padding: 28px 30px;">
+    <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px; flex-wrap: wrap; gap: 12px;">
+      <div class="stamp" style="font-size: 14px;">▣ Control Deck</div>
+      <div class="vents"><div class="vent"></div><div class="vent"></div><div class="vent"></div></div>
+    </div>
+
+    <div class="grid-2" style="margin-bottom: 20px;">
+      <div>
+        <label class="field-label" for="url">Target URL</label>
+        <input id="url" class="slot" type="text" value="http://localhost:3000/mock-site.html" spellcheck="false" />
+      </div>
+      <div>
+        <label class="field-label" for="goal">Testing Goal</label>
+        <input id="goal" class="slot" type="text" value="Find the pricing page and sign up for a trial" spellcheck="false" />
+      </div>
+    </div>
+
+    <label class="field-label">Persona Array — Select Test Subjects</label>
+    <div class="grid-3" style="margin-bottom: 24px;">
+      <button class="persona-toggle active" data-persona="brenda">
+        <span class="led on-green"></span>
+        <span><span class="pname">BRENDA MILLER</span><br /><span class="ptrait">59 · LOW TECH LITERACY</span></span>
+      </button>
+      <button class="persona-toggle active" data-persona="jax">
+        <span class="led on-green"></span>
+        <span><span class="pname">JAX RIVERA</span><br /><span class="ptrait">20 · IMPATIENT NATIVE</span></span>
+      </button>
+      <button class="persona-toggle active" data-persona="marcus">
+        <span class="led on-green"></span>
+        <span><span class="pname">MARCUS VANCE</span><br /><span class="ptrait">44 · ENTERPRISE IT DIR.</span></span>
+      </button>
+    </div>
+
+    <div style="display: flex; gap: 16px; flex-wrap: wrap;">
+      <button id="launch" class="btn btn-primary">▶ Launch Focus Group</button>
+      <button id="preset" class="btn btn-secondary">⌁ Load Demo Preset</button>
+      <button id="view-dossier" class="btn btn-secondary no-print" disabled style="margin-left: auto;">▤ View Audit Dossier</button>
+    </div>
+  </section>
+
+  <!-- ================= SPLIT-SCREEN TEST BENCH ================= -->
+  <section class="grid-2">
+    <!-- CRT monitor -->
+    <div class="crt-bezel screws">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px;">
+        <span class="stamp" style="font-size: 11px; color: #a4b0be;">Optical_Feed // Channel_01</span>
+        <span style="display: flex; align-items: center; gap: 8px;">
+          <span id="rec-led" class="led"></span>
+          <span class="stamp" id="rec-label" style="font-size: 10px; color: #a4b0be;">Standby</span>
+        </span>
+      </div>
+      <div class="crt-screen">
+        <div id="crt-idle" class="crt-idle">— NO SIGNAL —</div>
+        <img id="crt-img" alt="Live persona viewport" style="display: none;" />
+        <div class="crt-footer" id="crt-footer" style="display: none;">
+          <span id="crt-step">STEP --</span>
+          <span id="crt-url" style="overflow: hidden; text-overflow: ellipsis;">—</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Telemetry feed -->
+    <div>
+      <div class="panel screws" style="padding: 20px 22px 14px; margin-bottom: 16px; display: flex; align-items: center; justify-content: space-between;">
+        <span class="stamp" style="font-size: 14px;">≋ Telemetry &amp; Monologue Feed</span>
+        <span style="display: flex; align-items: center; gap: 8px;">
+          <span id="feed-led" class="led"></span>
+          <span class="stamp" id="feed-status" style="font-size: 10px; color: var(--text-muted);">Idle</span>
+        </span>
+      </div>
+      <div id="feed" class="feed">
+        <div class="step-card" style="text-align: center; color: var(--text-muted);">
+          <div class="mono" style="font-size: 12px;">AWAITING LAUNCH COMMAND…</div>
+          <div style="font-size: 12px; margin-top: 6px;">Configure the target, pick personas, and press <b>LAUNCH FOCUS GROUP</b>.</div>
+        </div>
+      </div>
+    </div>
+  </section>
+</div>
+
+<!-- ================= EXECUTIVE UX AUDIT DOSSIER ================= -->
+<div id="dossier-overlay" class="modal-overlay no-print">
+  <div id="dossier" class="clipboard screws">
+    <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 8px;">
+      <div>
+        <div class="stamp" style="font-size: 20px;">▤ Executive UX Audit Dossier</div>
+        <div class="mono" id="dossier-meta" style="font-size: 11px; color: var(--text-muted); margin-top: 6px;"></div>
+      </div>
+      <button id="dossier-close" class="btn btn-secondary no-print" style="padding: 8px 14px;">✕</button>
+    </div>
+
+    <div class="grid-2" style="margin: 24px 0; align-items: center;">
+      <div style="display: flex; align-items: center; gap: 22px;">
+        <svg width="150" height="150" viewBox="0 0 150 150">
+          <circle cx="75" cy="75" r="60" fill="none" stroke="#d1d9e6" stroke-width="14" />
+          <circle id="score-ring" cx="75" cy="75" r="60" fill="none" stroke="#ff4757" stroke-width="14"
+                  stroke-linecap="round" stroke-dasharray="376.99" stroke-dashoffset="376.99"
+                  transform="rotate(-90 75 75)" style="transition: stroke-dashoffset 1.2s ease, stroke 1.2s ease;" />
+          <text id="score-text" x="75" y="72" text-anchor="middle" font-family="JetBrains Mono, monospace"
+                font-weight="800" font-size="30" fill="#2d3436">–</text>
+          <text x="75" y="94" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="10" fill="#4a5568">UX HEALTH</text>
+        </svg>
+        <div>
+          <div class="stamp" style="font-size: 12px; margin-bottom: 8px;">Executive Summary</div>
+          <p id="dossier-summary" style="font-size: 14px; line-height: 1.6; margin: 0;"></p>
+        </div>
+      </div>
+      <div class="vents" style="justify-content: flex-end;"><div class="vent"></div><div class="vent"></div><div class="vent"></div></div>
+    </div>
+
+    <div class="stamp" style="font-size: 13px; margin: 18px 0 12px;">⚠ Detected Bottlenecks</div>
+    <div id="dossier-bottlenecks"></div>
+
+    <div class="stamp" style="font-size: 13px; margin: 22px 0 12px;">⚙ Prescriptive Engineering Fixes</div>
+    <div id="dossier-fixes"></div>
+
+    <div class="no-print" style="display: flex; gap: 14px; margin-top: 26px;">
+      <button id="dossier-print" class="btn btn-primary">⎙ Export / Print Dossier</button>
+      <button id="dossier-close-2" class="btn btn-secondary">Close</button>
+    </div>
+  </div>
+</div>
+
+<script>
+(function () {
+  'use strict';
+
+  const $ = (id) => document.getElementById(id);
+  const feed = $('feed'), crtImg = $('crt-img'), crtIdle = $('crt-idle'),
+        crtFooter = $('crt-footer'), crtStep = $('crt-step'), crtUrl = $('crt-url');
+
+  const PERSONA_COLORS = { 'Brenda Miller': '#ffa502', 'Jax Rivera': '#ff4757', 'Marcus Vance': '#1e90ff' };
+
+  let eventSource = null;
+  let latestReport = null;
+  let currentTestId = null;
+
+  /* ---------- persona toggles ---------- */
+  document.querySelectorAll('.persona-toggle').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      btn.classList.toggle('active');
+      const led = btn.querySelector('.led');
+      led.className = 'led' + (btn.classList.contains('active') ? ' on-green' : '');
+    });
+  });
+  const selectedPersonas = () =>
+    Array.from(document.querySelectorAll('.persona-toggle.active')).map((b) => b.dataset.persona);
+
+  /* ---------- demo preset ---------- */
+  $('preset').addEventListener('click', () => {
+    $('url').value = 'http://localhost:3000/mock-site.html';
+    $('goal').value = 'Find the pricing page and sign up for a trial';
+  });
+
+  /* ---------- frustration gauge ---------- */
+  function gaugeHTML(level) {
+    let segs = '';
+    for (let i = 1; i <= 5; i++) {
+      let cls = 'seg';
+      if (i <= level) cls += level <= 2 ? ' f1' : level === 3 ? ' f2' : ' f3';
+      segs += `<span class="${cls}"></span>`;
+    }
+    return `<div style="display:flex;align-items:center;gap:10px;"><span class="gauge-label">FRUSTRATION</span><div class="gauge">${segs}</div><span class="mono" style="font-size:11px;font-weight:700;">${level}/5</span></div>`;
+  }
+
+  function escapeHTML(s) {
+    return String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  }
+
+  /* ---------- step cards ---------- */
+  function addStepCard(d) {
+    const color = PERSONA_COLORS[d.persona] || '#4a5568';
+    const card = document.createElement('div');
+    card.className = 'step-card';
+    const statusTag = d.status && d.status !== 'running'
+      ? `<span class="mono" style="font-size:10px;font-weight:800;color:${d.status === 'completed' ? '#1e9e52' : '#d63031'};">[${escapeHTML(d.status.toUpperCase())}]</span>` : '';
+    card.innerHTML = `
+      <div class="step-head">
+        <span class="step-persona" style="color:${color};">● ${escapeHTML(d.persona || 'UNKNOWN')}</span>
+        <span class="step-num">STEP ${String(d.step).padStart(2, '0')} ${statusTag}</span>
+      </div>
+      ${gaugeHTML(d.frustration || 1)}
+      <div class="thought">“${escapeHTML(d.thought || '')}”</div>
+      <span class="action-badge">&gt;&gt; EXECUTED: ${escapeHTML((d.action || '').toUpperCase())}${d.target_label ? ' ' + escapeHTML(d.target_label) : ''}</span>`;
+    feed.appendChild(card);
+    feed.scrollTop = feed.scrollHeight;
+
+    if (d.screenshot) {
+      crtImg.src = d.screenshot;
+      crtImg.style.display = 'block';
+      crtIdle.style.display = 'none';
+      crtFooter.style.display = 'flex';
+      crtStep.textContent = `${(d.persona || '').toUpperCase()} · STEP ${d.step}`;
+      crtUrl.textContent = $('url').value;
+    }
+  }
+
+  function addSystemCard(text, tone) {
+    const card = document.createElement('div');
+    card.className = 'step-card';
+    card.innerHTML = `<div class="mono" style="font-size:12px;font-weight:700;color:${tone === 'err' ? '#d63031' : '#4a5568'};">${escapeHTML(text)}</div>`;
+    feed.appendChild(card);
+    feed.scrollTop = feed.scrollHeight;
+  }
+
+  function setLive(live) {
+    $('rec-led').className = 'led' + (live ? ' on-red pulse' : '');
+    $('rec-label').textContent = live ? 'REC' : 'STANDBY';
+    $('feed-led').className = 'led' + (live ? ' on-green pulse' : '');
+    $('feed-status').textContent = live ? 'STREAMING' : 'IDLE';
+    $('launch').disabled = live;
+  }
+
+  /* ---------- dossier ---------- */
+  function openDossier() {
+    if (!latestReport) return;
+    const r = latestReport;
+    $('dossier-meta').textContent =
+      `TARGET: ${$('url').value}  ·  GOAL: ${$('goal').value}  ·  TEST: ${currentTestId || '—'}`;
+
+    const score = Math.max(0, Math.min(100, Math.round(r.ux_health_score || 0)));
+    const C = 376.99;
+    const ring = $('score-ring');
+    const col = score < 40 ? '#ff4757' : score < 70 ? '#ffa502' : '#2ed573';
+    requestAnimationFrame(() => {
+      ring.style.strokeDashoffset = String(C * (1 - score / 100));
+      ring.style.stroke = col;
+    });
+    // animate the number
+    let n = 0;
+    const tick = setInterval(() => {
+      n += Math.max(1, Math.round((score - n) / 8));
+      if (n >= score) { n = score; clearInterval(tick); }
+      $('score-text').textContent = n;
+    }, 40);
+
+    $('dossier-summary').textContent = r.executive_summary || '—';
+
+    $('dossier-bottlenecks').innerHTML = (r.bottlenecks || []).map((b) => `
+      <div class="bottleneck ${escapeHTML(b.severity)}">
+        <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:8px;">
+          <strong style="font-size:14px;">${escapeHTML(b.title)}</strong>
+          <span class="sev sev-${escapeHTML(b.severity)}">${escapeHTML(b.severity)}</span>
+        </div>
+        <p style="font-size:13px;color:var(--text-muted);margin:0;line-height:1.55;">${escapeHTML(b.description)}</p>
+      </div>`).join('') || '<p class="mono" style="font-size:12px;color:var(--text-muted);">No bottlenecks recorded.</p>';
+
+    $('dossier-fixes').innerHTML = (r.actionable_fixes || []).map((f, i) => `
+      <div class="bottleneck LOW" style="border-left-color:#1e90ff;">
+        <div class="stamp" style="font-size:11px;color:var(--text-muted);margin-bottom:6px;">FIX_${String(i + 1).padStart(2, '0')} · ${escapeHTML(f.element)}</div>
+        <p style="font-size:13px;margin:0 0 6px;"><strong>Issue:</strong> ${escapeHTML(f.issue)}</p>
+        <p style="font-size:13px;margin:0;color:var(--text-muted);"><strong style="color:var(--text-primary);">Fix:</strong> ${escapeHTML(f.fix)}</p>
+      </div>`).join('') || '<p class="mono" style="font-size:12px;color:var(--text-muted);">No fixes recorded.</p>';
+
+    $('dossier-overlay').classList.add('open');
+  }
+  $('dossier-close').addEventListener('click', () => $('dossier-overlay').classList.remove('open'));
+  $('dossier-close-2').addEventListener('click', () => $('dossier-overlay').classList.remove('open'));
+  $('dossier-print').addEventListener('click', () => window.print());
+  $('view-dossier').addEventListener('click', openDossier);
+  $('dossier-overlay').addEventListener('click', (e) => {
+    if (e.target === $('dossier-overlay')) $('dossier-overlay').classList.remove('open');
+  });
+
+  /* ---------- launch ---------- */
+  $('launch').addEventListener('click', async () => {
+    const url = $('url').value.trim();
+    const goal = $('goal').value.trim();
+    const personaIds = selectedPersonas();
+    if (!url || !goal) { addSystemCard('ERR: Target URL and Testing Goal are both required.', 'err'); return; }
+    if (!personaIds.length) { addSystemCard('ERR: Select at least one persona.', 'err'); return; }
+
+    if (eventSource) { eventSource.close(); eventSource = null; }
+    feed.innerHTML = '';
+    latestReport = null;
+    $('view-dossier').disabled = true;
+    setLive(true);
+    addSystemCard(`▸ TRANSMITTING LAUNCH COMMAND → ${personaIds.length} PERSONA(S) ARMED…`);
+
+    let testId;
+    try {
+      const resp = await fetch('/api/start-test', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ url, goal, personaIds }),
+      });
+      const data = await resp.json();
+      if (!resp.ok) throw new Error(data.error || `HTTP ${resp.status}`);
+      testId = data.testId;
+      currentTestId = testId;
+    } catch (err) {
+      addSystemCard(`ERR: Launch failed — ${err.message}`, 'err');
+      setLive(false);
+      return;
+    }
+
+    addSystemCard(`▸ FOCUS GROUP LIVE · TEST_ID=${testId}`);
+
+    eventSource = new EventSource(`/api/stream/${testId}`);
+    eventSource.addEventListener('step', (e) => {
+      try { addStepCard(JSON.parse(e.data)); } catch { /* malformed frame */ }
+    });
+    eventSource.addEventListener('done', async (e) => {
+      let info = {};
+      try { info = JSON.parse(e.data); } catch { /* noop */ }
+      addSystemCard(`■ SESSION ${String(info.status || 'done').toUpperCase()} — compiling audit dossier…`);
+      eventSource.close(); eventSource = null;
+      setLive(false);
+      try {
+        const r = await fetch(`/api/report/${testId}`);
+        const data = await r.json();
+        if (r.ok && data.report) {
+          latestReport = data.report;
+          $('view-dossier').disabled = false;
+          addSystemCard('▤ AUDIT DOSSIER READY — opening…');
+          openDossier();
+        } else {
+          addSystemCard(`ERR: Report unavailable (${data.message || 'unknown'}).`, 'err');
+        }
+      } catch (err) {
+        addSystemCard(`ERR: Could not fetch report — ${err.message}`, 'err');
+      }
+    });
+    eventSource.onerror = () => {
+      addSystemCard('ERR: Telemetry link lost. Reconnect or relaunch.', 'err');
+      eventSource.close(); eventSource = null;
+      setLive(false);
+    };
+  });
+
+  /* ---------- engine health ping ---------- */
+  fetch('/api/health').then((r) => r.json()).then((h) => {
+    if (!h.groqKeySet) {
+      $('sys-led').className = 'led on-yellow pulse';
+      $('sys-label').textContent = 'SYSTEM STATUS: DEGRADED [GROQ_KEY_MISSING]';
+    }
+  }).catch(() => {
+    $('sys-led').className = 'led on-red';
+    $('sys-label').textContent = 'SYSTEM STATUS: OFFLINE';
+  });
+})();
+</script>
+</body>
+</html>
