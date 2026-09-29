@@ -23,7 +23,11 @@ const PORT = process.env.PORT || 3000;
 // Groq client (OpenAI-compatible endpoint). JSON mode via response_format.
 // ---------------------------------------------------------------------------
 const GROQ_API_KEY = process.env.GROQ_API_KEY;
-const GROQ_MODEL = process.env.GROQ_MODEL || 'meta-llama/llama-4-scout-17b-16e-instruct';
+// Vision model (supports image_url inputs) — qwen/qwen3.8-27b is currently the only
+// active Groq model with image input modality (llama-4-scout was deprecated 2026-07-17).
+const GROQ_VISION_MODEL = process.env.GROQ_MODEL || 'qwen/qwen3.8-27b';
+// Text-only model used for the report synthesis step (no images needed).
+const GROQ_TEXT_MODEL = process.env.GROQ_TEXT_MODEL || 'openai/gpt-oss-120b';
 const groq = new OpenAI({
   apiKey: GROQ_API_KEY || 'not-set',
   baseURL: 'https://api.groq.com/openai/v1',
@@ -165,7 +169,7 @@ async function decideNextStep(persona, goal, pageUrl, elements, history, screens
       ({ id, tag, text, type, placeholder, disabled, checked })), null, 1)}`;
 
   const completion = await groq.chat.completions.create({
-    model: GROQ_MODEL,
+    model: GROQ_VISION_MODEL,
     response_format: { type: 'json_object' },
     temperature: 0.7,
     max_tokens: 600,
@@ -173,10 +177,12 @@ async function decideNextStep(persona, goal, pageUrl, elements, history, screens
       { role: 'system', content: systemPrompt },
       {
         role: 'user',
-        content: [
-          { type: 'text', text: userText },
-          { type: 'image_url', image_url: { url: `data:image/png;base64,${screenshotB64}` } },
-        ],
+        content: screenshotB64
+          ? [
+              { type: 'text', text: userText },
+              { type: 'image_url', image_url: { url: `data:image/png;base64,${screenshotB64}` } },
+            ]
+          : userText,
       },
     ],
   });
@@ -326,7 +332,7 @@ async function synthesizeReport(test) {
     .join('\n');
 
   const completion = await groq.chat.completions.create({
-    model: GROQ_MODEL,
+    model: GROQ_TEXT_MODEL,
     response_format: { type: 'json_object' },
     temperature: 0.4,
     max_tokens: 2000,
@@ -404,7 +410,7 @@ async function runTest(test) {
 // API routes
 // ---------------------------------------------------------------------------
 app.get('/api/health', (req, res) => {
-  res.json({ ok: true, engine: 'groq', model: GROQ_MODEL, groqKeySet: !!GROQ_API_KEY });
+  res.json({ ok: true, engine: 'groq', visionModel: GROQ_VISION_MODEL, textModel: GROQ_TEXT_MODEL, groqKeySet: !!GROQ_API_KEY });
 });
 
 app.post('/api/start-test', (req, res) => {
@@ -476,7 +482,8 @@ app.get('/api/report/:testId', (req, res) => {
 });
 
 app.listen(PORT, () => {
-  console.log(`[SyntheticFocus] dashboard  -> http://localhost:${PORT}/`);
+  console.log(`[SyntheticFocus] dashboard   -> http://localhost:${PORT}/`);
   console.log(`[SyntheticFocus] mock target -> http://localhost:${PORT}/mock-site.html`);
-  console.log(`[SyntheticFocus] groq engine -> ${GROQ_MODEL} ${GROQ_API_KEY ? '(key present)' : '(NO KEY SET)'}`);
+  console.log(`[SyntheticFocus] vision model -> ${GROQ_VISION_MODEL} ${GROQ_API_KEY ? '(key present)' : '(NO KEY SET)'}`);
+  console.log(`[SyntheticFocus] report model -> ${GROQ_TEXT_MODEL}`);
 });
