@@ -7,10 +7,14 @@
  *   POST /api/start-test    { url, goal, personaIds } -> { testId }
  *   GET  /api/stream/:testId                  SSE: "step" events + terminal "done"
  *   GET  /api/report/:testId                   Executive UX Audit (202 while pending)
+ *   GET  /api/analytics                        visitor page-view stats
  *   GET  /api/health                           engine status
  */
 require('dotenv').config();
 
+const fs = require('fs');
+const path = require('path');
+const crypto = require('crypto');
 const express = require('express');
 const cors = require('cors');
 const puppeteer = require('puppeteer');
@@ -35,7 +39,142 @@ const groq = new OpenAI({
 
 app.use(cors());
 app.use(express.json({ limit: '2mb' }));
+app.use(trackPageVisit);
 app.use(express.static('public'));
+
+// ---------------------------------------------------------------------------
+// Visitor analytics (cookie unique IDs + JSON file so restarts keep counts)
+// ---------------------------------------------------------------------------
+const VISITS_FILE = path.join(__dirname, 'data', 'visits.json');
+const MAX_VISIT_EVENTS = 8000;
+const VISITOR_COOKIE = 'sf_vid';
+let visitEvents = loadVisitEvents();
+
+function loadVisitEvents() {
+  try {
+    const raw = JSON.parse(fs.readFileSync(VISITS_FILE, 'utf8'));
+    return Array.isArray(raw.events) ? raw.events : [];
+  } catch {
+    return [];
+  }
+}
+
+function persistVisitEvents() {
+  try {
+    fs.mkdirSync(path.dirname(VISITS_FILE), { recursive: true });
+    fs.writeFileSync(VISITS_FILE, JSON.stringify({ events: visitEvents }));
+  } catch (err) {
+    console.error('[SyntheticFocus] could not persist visits:', err.message);
+  }
+}
+
+function parseCookies(req) {
+  const out = {};
+  for (const part of String(req.headers.cookie || '').split(';')) {
+    const i = part.indexOf('=');
+    if (i < 0) continue;
+    const k = part.slice(0, i).trim();
+    const v = part.slice(i + 1).trim();
+    if (!k) continue;
+    try { out[k] = decodeURIComponent(v); } catch { out[k] = v; }
+  }
+  return out;
+}
+
+function ensureVisitorId(req, res) {
+  const existing = parseCookies(req)[VISITOR_COOKIE];
+  if (existing && /^[a-zA-Z0-9_-]{8,80}$/.test(existing)) return existing;
+  const vid = crypto.randomUUID();
+  res.append('Set-Cookie', `${VISITOR_COOKIE}=${encodeURIComponent(vid)}; Path=/; Max-Age=31536000; SameSite=Lax`);
+  return vid;
+}
+
+function shouldCountVisit(req) {
+  if (req.method !== 'GET') return false;
+  const p = req.path || '/';
+  if (p.startsWith('/api/')) return false;
+  if (p !== '/' && !p.endsWith('.html')) return false;
+  const ua = String(req.headers['user-agent'] || '');
+  if (!ua || /HeadlessChrome|Puppeteer/i.test(ua)) return false;
+  return true;
+}
+
+function trackPageVisit(req, res, next) {
+  try {
+    if (shouldCountVisit(req)) {
+      const vid = ensureVisitorId(req, res);
+      visitEvents.push({ t: Date.now(), path: req.path === '/' ? '/' : req.path, vid });
+      if (visitEvents.length > MAX_VISIT_EVENTS) {
+        visitEvents = visitEvents.slice(-MAX_VISIT_EVENTS);
+      }
+      persistVisitEvents();
+    }
+  } catch { /* never block a page load */ }
+  next();
+}
+
+function startOfDay(ts) {
+  const d = new Date(ts);
+  d.setHours(0, 0, 0, 0);
+  return d.getTime();
+}
+
+function dayKey(ts) {
+  const d = new Date(ts);
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
+}
+
+function uniqueCount(events) {
+  return new Set(events.map((e) => e.vid)).size;
+}
+
+function summarizeVisits() {
+  const now = Date.now();
+  const today0 = startOfDay(now);
+  const week0 = today0 - 6 * 86400000;
+  const today = visitEvents.filter((e) => e.t >= today0);
+  const week = visitEvents.filter((e) => e.t >= week0);
+
+  const byPathMap = new Map();
+  for (const e of visitEvents) {
+    const row = byPathMap.get(e.path) || { path: e.path, views: 0, visitors: new Set() };
+    row.views += 1;
+    row.visitors.add(e.vid);
+    byPathMap.set(e.path, row);
+  }
+  const byPath = Array.from(byPathMap.values())
+    .map((r) => ({ path: r.path, views: r.views, uniqueVisitors: r.visitors.size }))
+    .sort((a, b) => b.views - a.views);
+
+  const days = [];
+  for (let i = 13; i >= 0; i -= 1) {
+    const t = today0 - i * 86400000;
+    const key = dayKey(t);
+    const slice = visitEvents.filter((e) => dayKey(e.t) === key);
+    days.push({ date: key, views: slice.length, uniqueVisitors: uniqueCount(slice) });
+  }
+
+  const recent = visitEvents.slice(-40).reverse().map((e) => ({
+    t: e.t,
+    path: e.path,
+    visitor: e.vid.slice(0, 8),
+  }));
+
+  return {
+    totalViews: visitEvents.length,
+    uniqueVisitors: uniqueCount(visitEvents),
+    todayViews: today.length,
+    todayUnique: uniqueCount(today),
+    weekViews: week.length,
+    weekUnique: uniqueCount(week),
+    byPath,
+    days,
+    recent,
+  };
+}
 
 // ---------------------------------------------------------------------------
 // Personas
@@ -376,6 +515,7 @@ async function runTest(test) {
     });
   } catch (err) {
     test.status = 'failed';
+    test.finishedAt = Date.now();
     broadcast(test.testId, 'done', { status: 'failed', error: `Browser launch failed: ${err.message}` });
     return;
   }
@@ -479,6 +619,10 @@ app.get('/api/report/:testId', (req, res) => {
     return res.status(202).json({ status: test.status, message: 'Report is not ready yet.' });
   }
   res.json({ status: 'done', report: test.report, goal: test.goal, url: test.url });
+});
+
+app.get('/api/analytics', (_req, res) => {
+  res.json(summarizeVisits());
 });
 
 app.listen(PORT, () => {

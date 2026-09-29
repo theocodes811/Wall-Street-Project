@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>SYNTHETIC_FOCUS // VISITOR ANALYTICS</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&family=JetBrains+Mono:ital,wght@0,400;0,600;0,700;0,800;1,400&display=swap" rel="stylesheet" />
+<style>
+:root {
+  --bg-chassis: #e0e5ec;
+  --bg-panel: #f0f2f5;
+  --bg-recessed: #d1d9e6;
+  --text-primary: #2d3436;
+  --text-muted: #4a5568;
+  --accent: #ff4757;
+  --led-green: #2ed573;
+  --led-green-glow: rgba(46, 213, 115, 0.7);
+  --shadow-card: 8px 8px 16px #babecc, -8px -8px 16px #ffffff;
+  --shadow-pressed: inset 6px 6px 12px #babecc, inset -6px -6px 12px #ffffff;
+  --shadow-recessed: inset 4px 4px 8px #babecc, inset -4px -4px 8px #ffffff;
+  --shadow-sharp: 4px 4px 8px rgba(0,0,0,0.15), -1px -1px 1px rgba(255,255,255,0.8);
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  background: var(--bg-chassis);
+  background-image: radial-gradient(circle at 1px 1px, rgba(0,0,0,0.035) 1px, transparent 0);
+  background-size: 26px 26px;
+  color: var(--text-primary);
+  font-family: 'Inter', sans-serif;
+  min-height: 100vh;
+  padding: 24px;
+}
+.mono { font-family: 'JetBrains Mono', monospace; }
+.stamp {
+  font-family: 'JetBrains Mono', monospace;
+  text-transform: uppercase;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+}
+.panel {
+  background: var(--bg-panel);
+  border-radius: 18px;
+  box-shadow: var(--shadow-card);
+}
+.screws {
+  background-image:
+    radial-gradient(circle at 12px 12px, #8b93a3 0 3px, #5d6572 3px 4px, transparent 4.5px),
+    radial-gradient(circle at calc(100% - 12px) 12px, #8b93a3 0 3px, #5d6572 3px 4px, transparent 4.5px),
+    radial-gradient(circle at 12px calc(100% - 12px), #8b93a3 0 3px, #5d6572 3px 4px, transparent 4.5px),
+    radial-gradient(circle at calc(100% - 12px) calc(100% - 12px), #8b93a3 0 3px, #5d6572 3px 4px, transparent 4.5px);
+  background-repeat: no-repeat;
+}
+.led { width: 10px; height: 10px; border-radius: 50%; background: #9aa3b2; flex: none; }
+.led.on-green { background: var(--led-green); box-shadow: 0 0 8px 2px var(--led-green-glow); }
+.pulse { animation: ledpulse 1.6s ease-in-out infinite; }
+@keyframes ledpulse { 0%,100% { opacity: 1; } 50% { opacity: 0.45; } }
+.btn {
+  font-family: 'JetBrains Mono', monospace;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  border: none;
+  border-radius: 12px;
+  padding: 10px 16px;
+  cursor: pointer;
+  box-shadow: var(--shadow-sharp);
+  text-transform: uppercase;
+  font-size: 13px;
+  text-decoration: none;
+  display: inline-block;
+  color: var(--text-muted);
+  background: var(--bg-panel);
+}
+.btn:active { box-shadow: var(--shadow-pressed); }
+.layout { max-width: 1440px; margin: 0 auto; display: flex; flex-direction: column; gap: 24px; }
+.grid-4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; }
+.grid-2 { display: grid; grid-template-columns: 1.4fr 1fr; gap: 24px; }
+@media (max-width: 1024px) { .grid-4, .grid-2 { grid-template-columns: 1fr; } }
+.kpi { padding: 22px 24px; }
+.kpi .n { font-family: 'JetBrains Mono', monospace; font-size: 36px; font-weight: 800; letter-spacing: -0.03em; }
+.bar-row { display: flex; align-items: flex-end; gap: 8px; height: 180px; padding: 8px 4px 0; }
+.bar {
+  flex: 1; min-width: 0;
+  display: flex; flex-direction: column; align-items: center; justify-content: flex-end; gap: 6px; height: 100%;
+}
+.bar .fill {
+  width: 100%;
+  border-radius: 8px 8px 4px 4px;
+  background: var(--accent);
+  box-shadow: 0 0 10px rgba(255,71,87,0.35);
+  min-height: 4px;
+}
+.bar .lbl { font-family: 'JetBrains Mono', monospace; font-size: 9px; color: var(--text-muted); letter-spacing: 0.04em; }
+.path-row {
+  display: flex; justify-content: space-between; align-items: center; gap: 12px;
+  padding: 12px 0; border-bottom: 1px solid rgba(186,190,204,0.6);
+}
+.path-bar { height: 8px; border-radius: 999px; background: var(--bg-recessed); box-shadow: var(--shadow-recessed); overflow: hidden; margin-top: 8px; }
+.path-bar > span { display: block; height: 100%; background: #1e90ff; border-radius: 999px; }
+table { width: 100%; border-collapse: collapse; }
+th, td { text-align: left; padding: 10px 8px; font-size: 13px; }
+th { font-family: 'JetBrains Mono', monospace; font-size: 10px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--text-muted); }
+td { border-top: 1px solid rgba(186,190,204,0.5); font-family: 'JetBrains Mono', monospace; font-size: 12px; }
+</style>
+</head>
+<body>
+<div class="layout">
+  <header class="panel screws" style="padding: 22px 30px; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 16px;">
+    <div>
+      <div class="stamp" style="font-size: 22px;">Visitor Analytics <span style="color: var(--text-muted);">//</span> UX-Bench-2000</div>
+      <div class="stamp" style="font-size: 10px; color: var(--text-muted); margin-top: 6px;">Page views and unique people (cookie ID) · auto-refresh 10s</div>
+    </div>
+    <div style="display: flex; align-items: center; gap: 14px; flex-wrap: wrap;">
+      <a href="/" class="btn">◀ Bench</a>
+      <div class="panel" style="display: flex; align-items: center; gap: 10px; padding: 10px 16px; box-shadow: var(--shadow-recessed); border-radius: 12px;">
+        <span class="led on-green pulse"></span>
+        <span class="stamp" id="live" style="font-size: 11px;">Live</span>
+      </div>
+    </div>
+  </header>
+
+  <section class="grid-4" id="kpis"></section>
+
+  <section class="grid-2">
+    <div class="panel screws" style="padding: 24px 26px;">
+      <div class="stamp" style="font-size: 14px; margin-bottom: 16px;">▣ Last 14 days</div>
+      <div class="bar-row" id="chart"></div>
+    </div>
+    <div class="panel screws" style="padding: 24px 26px;">
+      <div class="stamp" style="font-size: 14px; margin-bottom: 8px;">▣ Pages</div>
+      <div id="paths"></div>
+    </div>
+  </section>
+
+  <section class="panel screws" style="padding: 24px 26px;">
+    <div class="stamp" style="font-size: 14px; margin-bottom: 8px;">▣ Recent visits</div>
+    <div style="overflow-x: auto;">
+      <table>
+        <thead><tr><th>When</th><th>Page</th><th>Visitor</th></tr></thead>
+        <tbody id="recent"></tbody>
+      </table>
+    </div>
+  </section>
+</div>
+<script>
+(function () {
+  const PAGE_NAMES = {
+    '/': 'Control bench',
+    '/index.html': 'Control bench',
+    '/analytics.html': 'Analytics',
+    '/mock-site.html': 'Demo site (FlowSync)',
+  };
+  const $ = (id) => document.getElementById(id);
+  function esc(s) {
+    return String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  }
+  function pageName(p) { return PAGE_NAMES[p] || p; }
+  function fmtWhen(t) {
+    const d = new Date(t);
+    return d.toLocaleString(undefined, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit', second: '2-digit' });
+  }
+
+  function render(data) {
+    $('kpis').innerHTML = [
+      ['Total page views', data.totalViews],
+      ['Unique people', data.uniqueVisitors],
+      ['Views today', data.todayViews],
+      ['People today', data.todayUnique],
+    ].map(([label, n]) => `
+      <div class="panel screws kpi">
+        <div class="stamp" style="font-size: 10px; color: var(--text-muted);">${esc(label)}</div>
+        <div class="n">${Number(n).toLocaleString()}</div>
+        ${label === 'Views today' ? `<div class="mono" style="font-size:11px;color:var(--text-muted);margin-top:6px;">This week: ${Number(data.weekViews).toLocaleString()} views · ${Number(data.weekUnique).toLocaleString()} people</div>` : ''}
+      </div>`).join('');
+
+    const max = Math.max(1, ...data.days.map((d) => d.views));
+    $('chart').innerHTML = data.days.map((d) => {
+      const h = Math.round((d.views / max) * 100);
+      const md = d.date.slice(5);
+      return `<div class="bar" title="${esc(d.date)}: ${d.views} views, ${d.uniqueVisitors} people">
+        <div class="fill" style="height:${h}%"></div>
+        <div class="lbl">${esc(md)}</div>
+      </div>`;
+    }).join('');
+
+    const maxPath = Math.max(1, ...data.byPath.map((p) => p.views));
+    $('paths').innerHTML = data.byPath.length
+      ? data.byPath.map((p) => `
+        <div class="path-row" style="display:block;">
+          <div style="display:flex;justify-content:space-between;gap:12px;">
+            <span class="mono" style="font-weight:700;">${esc(pageName(p.path))}</span>
+            <span class="mono" style="font-size:11px;color:var(--text-muted);">${p.views} views · ${p.uniqueVisitors} people</span>
+          </div>
+          <div class="path-bar"><span style="width:${Math.round((p.views / maxPath) * 100)}%"></span></div>
+        </div>`).join('')
+      : '<p class="mono" style="font-size:12px;color:var(--text-muted);">No visits recorded yet.</p>';
+
+    $('recent').innerHTML = data.recent.length
+      ? data.recent.map((r) => `<tr><td>${esc(fmtWhen(r.t))}</td><td>${esc(pageName(r.path))}</td><td>${esc(r.visitor)}</td></tr>`).join('')
+      : '<tr><td colspan="3" class="mono" style="color:var(--text-muted);">Waiting for the first visitor…</td></tr>';
+  }
+
+  async function load() {
+    try {
+      const r = await fetch('/api/analytics');
+      if (!r.ok) throw new Error('HTTP ' + r.status);
+      render(await r.json());
+      $('live').textContent = 'Live · ' + new Date().toLocaleTimeString();
+    } catch (err) {
+      $('live').textContent = 'OFFLINE · ' + err.message;
+    }
+  }
+  load();
+  setInterval(load, 10000);
+})();
+</script>
+</body>
+</html>
